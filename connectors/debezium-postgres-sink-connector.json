@@ -1,0 +1,23 @@
+{
+    "name": "jdbc-sink-connector",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "connection.url": "jdbc:postgresql://postgres_replication:5432/test",
+        "connection.user": "postgres",
+        "connection.password": "postgres",
+        "auto.create": "true",
+        "auto.evolve": "true",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "id",
+        "topics.regex": "dbserver1.test.*",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "true",
+        "value.converter.schemas.enable": "true",
+        "table.name.format": "users",
+        "batch.size": "3000",
+        "delete.enabled": "true",
+        "flush.size": "1000"
+    }
+}

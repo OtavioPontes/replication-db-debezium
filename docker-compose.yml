@@ -1,0 +1,142 @@
+version: "3.7"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.5.3
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-enterprise-kafka:5.5.3
+    links:
+      - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9991
+    ports:
+      - 9092:9092
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+      - zookeeper
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=alura
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+
+  postgres:
+    image: postgres
+    container_name: postgres_replication
+    environment:
+      - POSTGRES_DB=test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+  mysql:
+    container_name: mysql_replication
+    image: mysql:5.7
+    command:
+      - --max_allowed_packet=10G
+      - --range_optimizer_max_mem_size=800000000
+      - --binlog_format=ROW
+      - --binlog_row_image=FULL
+      - --log_bin=mysql-bin
+      - --server-id=1
+    environment:
+      - MYSQL_ROOT_PASSWORD=debezium
+      - MYSQL_DATABASE=test
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql2:
+    container_name: mysql2_replication
+    image: mysql:5.7
+    command:
+      - --max_allowed_packet=10G
+      - --range_optimizer_max_mem_size=800000000
+      - --binlog_format=ROW
+      - --binlog_row_image=FULL
+      - --log_bin=mysql-bin
+      - --server-id=1
+    environment:
+      - MYSQL_ROOT_PASSWORD=debezium
+      - MYSQL_DATABASE=test
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data_2:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  connect:
+    image: quay.io/debezium/connect:1.9
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8083:8083
+    links:
+      - kafka
+      - mysql
+      - mysql2
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - CONNECT_PLUGIN_PATH=/kafka/connect,/kafka/connect/confluentinc-kafka-connect-jdbc-10.8.4
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:5.5.3
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081,http://localhost:8081
+    ports:
+      - 8081:8081
+    depends_on: [zookeeper, kafka]
+
+  consumer:
+    build:
+      context: ./consumers
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - POSTGRES_CONN=postgres://postgres:postgres@postgres:5432/test?sslmode=disable
+    depends_on:
+      - kafka
+      - connect
+
+  consumer2:
+    build:
+      context: ./consumers
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - POSTGRES_CONN=postgres://postgres:postgres@postgres:5432/test?sslmode=disable
+    depends_on:
+      - kafka
+      - connect
+
+volumes:
+  mysql_data:
+  mysql_data_2:
+  postgres_data:
