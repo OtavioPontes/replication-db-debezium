@@ -120,6 +120,9 @@ services:
     environment:
       - PORT=8000
       - POSTGRES_CONN=postgres://postgres:postgres@postgres:5432/test?sslmode=disable
+      - KAFKA_URL=kafka:9092
+      - KAFKA_TOPIC=dbserver1.test.users
+      - KAFKA_GROUP_ID=mysql-consumer-group
     depends_on:
       - kafka
       - connect
@@ -132,9 +135,27 @@ services:
     environment:
       - PORT=8001
       - POSTGRES_CONN=postgres://postgres:postgres@postgres:5432/test?sslmode=disable
+      - KAFKA_URL=kafka:9092
+      - KAFKA_TOPIC=dbserver1.test.users
+      - KAFKA_GROUP_ID=mysql-consumer-group
     depends_on:
       - kafka
       - connect
+
+  # consumer3:
+  #   build:
+  #     context: ./consumers
+  #   ports:
+  #     - "8002:8002"
+  #   environment:
+  #     - PORT=8002
+  #     - POSTGRES_CONN=postgres://postgres:postgres@postgres:5432/test?sslmode=disable
+  #     - KAFKA_URL=kafka:9092
+  #     - KAFKA_TOPIC=dbserver2.test.users
+  #     - KAFKA_GROUP_ID=mysql2-consumer-group
+  #   depends_on:
+  #     - kafka
+  #     - connect
 
 volumes:
   mysql_data:

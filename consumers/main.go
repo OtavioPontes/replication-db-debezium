@@ -33,9 +33,9 @@ type Message struct {
 var messages []Message
 
 func main() {
-	brokers := []string{"kafka:9092"}
-	topic := "dbserver1.test.users"
-	groupID := "mysql-consumer-group"
+	brokers := []string{os.Getenv("KAFKA_URL")}
+	topic := os.Getenv("KAFKA_TOPIC")
+	groupID := os.Getenv("KAFKA_GROUP_ID")
 
 	connStr := os.Getenv("POSTGRES_CONN")
 	pool, err := pgxpool.New(context.Background(), connStr)
